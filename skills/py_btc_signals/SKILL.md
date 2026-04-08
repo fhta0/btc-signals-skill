@@ -21,11 +21,27 @@ metadata: {"openclaw": {"emoji": "₿", "requires": {"bins": ["python"]}}}
 
 执行命令前先 `cd "$REPO"`，或使用绝对路径。**不要**依赖相对层级推算路径。
 
-## 环境与依赖
+## 执行前检查
 
-- Python **3.10+**，已安装依赖：`pip install -r REPO/requirements.txt`
-- 需要外网拉取行情（Yahoo / OKX 公开接口）
-- 免责声明：**仅供学习研究，不构成投资建议**
+先确认 Python 3.10+ 可用：
+
+```bash
+python --version || python3 --version
+```
+
+若命令不存在或版本低于 3.10，告知用户按系统安装：
+
+- **Windows**：前往 https://www.python.org/downloads/ 下载安装包，安装时勾选"Add Python to PATH"
+- **macOS**：`brew install python`（需先安装 Homebrew）
+- **Linux**：`sudo apt install python3`（Debian/Ubuntu）或 `sudo dnf install python3`（Fedora）
+
+Python 就绪后安装依赖（仅首次）：
+
+```bash
+pip install -r "$REPO/requirements.txt"
+```
+
+> 需要外网拉取行情（Yahoo / OKX 公开接口）；**仅供学习研究，不构成投资建议**。
 
 ## 常用命令（在 `REPO` 下）
 
@@ -61,7 +77,7 @@ pytest -q
 ## 数据源说明
 
 - 默认 `--source yfinance`；OKX 用 `--source okx`，可选 `--market-type SPOT|SWAP`。
-- OKX 展示符号白名单与分页细节见仓库内 `OKX_DATA_INTEGRATION.md`。
+- OKX：已验证 `BTC-USD`/`ETH-USD` 映射为 `*-USDT`，其它 `*-USD` 会报错；原生 `BASE-USDT` 可用；分页与 HTTP 见 `scripts/datasource/okx_source.py`。
 - 指标：RSI（Wilder 平滑）、MACD、布林带、均线；信号输出含 `symbol`、`risk_notes` 等字段。
 
 ## 输出与合规
@@ -71,5 +87,4 @@ pytest -q
 
 ## 相关文档
 
-- 数据源集成细节：仓库内 `OKX_DATA_INTEGRATION.md`
 - 项目说明：仓库内 `readme.md`

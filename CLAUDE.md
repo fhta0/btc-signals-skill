@@ -11,7 +11,7 @@ A Bitcoin quantitative trading analysis toolkit implemented as a Claude Skill (`
 - **`yfinance`** — Yahoo Finance (default)
 - **`okx`** — OKX public REST candles (no API key for market data)
 
-See `OKX_DATA_INTEGRATION.md` for symbol mapping, OKX pagination (ms timestamps, limit 300), and testing strategy.
+OKX: symbol mapping and pagination live in `scripts/datasource/okx_source.py` (verified `BTC-USD`/`ETH-USD` → `*-USDT`, `after` in ms, limit 300 per page, browser-like `User-Agent`). Use `pytest -m integration` for live smoke tests.
 
 ## Setup
 
@@ -68,7 +68,7 @@ Implementations:
 - `yfinance_source.py` — Yahoo (lazy-import `yfinance` so tests can run without it when only testing OKX/offline helpers)
 - `okx_source.py` — public `/api/v5/market/candles`, pagination via `after` (ms), browser-like `User-Agent`
 
-**Symbol convention:** CLI uses **`BTC-USD`-style** symbols. OKX maps verified `BTC-USD` / `ETH-USD` → `*-USDT`; other `*-USD` inputs raise. Native `BASE-USDT` / `BASE-USDT-SWAP` are accepted. Details in `OKX_DATA_INTEGRATION.md`.
+**Symbol convention:** CLI uses **`BTC-USD`-style** symbols. OKX maps verified `BTC-USD` / `ETH-USD` → `*-USDT`; other `*-USD` inputs raise. Native `BASE-USDT` / `BASE-USDT-SWAP` are accepted. See `okx_source.resolve_okx_inst_id`.
 
 ### Scripts (`scripts/`)
 

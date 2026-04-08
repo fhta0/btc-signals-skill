@@ -19,7 +19,7 @@ class DataSource(ABC):
         Parameters
         ----------
         symbol : str
-            项目统一符号（见 OKX_DATA_INTEGRATION.md 第 3.3 节）。
+            项目统一符号；OKX 侧映射见 scripts/datasource/okx_source.py 的 resolve_okx_inst_id。
         interval : str
             如 1m, 5m, 15m, 1h, 4h, 1d。
         period : str

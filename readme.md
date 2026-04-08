@@ -39,7 +39,6 @@ pip install -r requirements.txt
 ```text
 py-btc-signals/   # 或你本地的 btc-quant-trader/
 ├── readme.md
-├── OKX_DATA_INTEGRATION.md
 ├── requirements.txt
 ├── pytest.ini
 ├── skills/
@@ -75,7 +74,7 @@ python scripts/fetch_price.py --symbol BTC-USD --period 30d --interval 1h --sour
 - 支持 `--symbol` / `--period` / `--interval`
 - `--source`：`yfinance`（默认）或 `okx`
 - `--market-type`：仅 OKX 有效，`SPOT` 或 `SWAP`
-- CLI 统一使用 `BTC-USD` 风格；OKX 侧对 **已验证** 的 `BTC-USD` / `ETH-USD` 映射为 `*-USDT`，其它 `*-USD` 会报错；原生 `BASE-USDT` 可直接使用（见 `OKX_DATA_INTEGRATION.md`）
+- CLI 统一使用 `BTC-USD` 风格；OKX 侧对 **已验证** 的 `BTC-USD` / `ETH-USD` 映射为 `*-USDT`，其它 `*-USD` 会报错；原生 `BASE-USDT` 可直接使用（逻辑见 `scripts/datasource/okx_source.py`）
 - OKX 数据源下 `period` 暂要求 `Nd` 形式（如 `30d`）
 - `--save` 会将 CSV 落盘到 `data/`
 
