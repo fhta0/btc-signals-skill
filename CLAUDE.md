@@ -92,9 +92,10 @@ action (BUY/SELL/HOLD), direction (做多/做空/观望),
 signals[] (per-strategy scores + messages), risk_notes[]
 ```
 
-### Skill definition
+### Skill definitions
 
-`SKILL.md` (at repo root or `.claude/skills/btc-quant-trader/SKILL.md`) defines the Claude Skill metadata with YAML front matter (`name`, `description`) and instructions for invoking the scripts.
+- **OpenClaw / AgentSkills:** `skills/py_btc_signals/SKILL.md` — YAML front matter (`name: py_btc_signals`, `description`, optional `metadata` for `openclaw.requires.bins`). See [OpenClaw Skills](https://docs.openclaw.ai/skills/).
+- **Claude Code (optional):** a separate `SKILL.md` may also live under `.claude/skills/...` if you mirror instructions for that product.
 
 ### Testing
 

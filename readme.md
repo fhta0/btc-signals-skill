@@ -6,10 +6,25 @@
 
 > **推荐 GitHub 仓库名：** `py-btc-signals`（短、好记、含 `btc` / `signals` 利于搜索）。本地目录名可保持不变。
 
+## OpenClaw Skill
+
+本仓库包含符合 [AgentSkills](https://agentskills.io/) / [OpenClaw](https://docs.openclaw.ai/skills/) 的技能定义：
+
+- 路径：`skills/py_btc_signals/SKILL.md`
+- Skill `name`：`py_btc_signals`（`snake_case`）
+
+**使用方式（任选其一）**
+
+1. **整仓作为工作区**：用 OpenClaw 打开本仓库根目录，技能会随项目被识别（若配置扫描 `skills/` 或 `.agents/skills/`，以你的 `openclaw.json` 为准）。
+2. **复制到全局技能目录**：将 `skills/py_btc_signals` 复制到 `~/.openclaw/skills/` 或当前工作区的 `skills/`，并确保执行命令时的工作目录仍是**本仓库根**（脚本依赖 `scripts/`）。
+3. **CLI 验证**：`openclaw skills list`；新建会话或 `openclaw gateway restart` 后生效。详见 [Creating Skills](https://docs.openclaw.ai/tools/creating-skills)。
+
+`SKILL.md` 内使用 `{baseDir}` 表示技能目录；仓库根目录为 `{baseDir}/../..`。
+
 ## 环境要求
 
 - Python 3.10+
-- 可访问外网（`yfinance` 数据源）
+- 可访问外网（`yfinance` / OKX 数据源）
 
 ## 安装
 
@@ -27,6 +42,9 @@ py-btc-signals/   # 或你本地的 btc-quant-trader/
 ├── OKX_DATA_INTEGRATION.md
 ├── requirements.txt
 ├── pytest.ini
+├── skills/
+│   └── py_btc_signals/
+│       └── SKILL.md      # OpenClaw / AgentSkills 技能定义
 └── scripts/
     ├── datasource/
     │   ├── __init__.py
