@@ -4,8 +4,6 @@
 
 开源比特币行情与技术分析工具：**yfinance / OKX** 双数据源、多策略信号、基础回测；与代码实现一致。仅供学习研究，不构成投资建议。
 
-> **GitHub 仓库：** [fhta0/btc-signals-skill](https://github.com/fhta0/btc-signals-skill)（公开技能与脚本一体化；本地目录名可任意）。
-
 ## OpenClaw Skill
 
 本仓库包含符合 [AgentSkills](https://agentskills.io/) / [OpenClaw](https://docs.openclaw.ai/skills/) 的技能定义：
