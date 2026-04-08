@@ -31,3 +31,4 @@ Thumbs.db
 
 # Local tooling (may contain personal paths)
 .claude/settings.local.json
+logs/
