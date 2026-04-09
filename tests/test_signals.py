@@ -94,28 +94,42 @@ class TestIndividualSignalScores:
         assert score == 0
 
     def test_ma_crossover_buy_signal(self):
-        score, _ = SignalGenerator.ma_crossover_signal(10.0, 9.0)
+        score, _ = SignalGenerator.ma_crossover_signal(10.0, 9.0, 9.0, 10.0)
         assert score == 1
 
     def test_ma_crossover_sell_signal(self):
-        score, _ = SignalGenerator.ma_crossover_signal(9.0, 10.0)
+        score, _ = SignalGenerator.ma_crossover_signal(9.0, 10.0, 10.0, 9.0)
         assert score == -1
 
     def test_ma_crossover_neutral_signal(self):
-        score, _ = SignalGenerator.ma_crossover_signal(10.0, 10.0)
+        score, _ = SignalGenerator.ma_crossover_signal(10.0, 10.0, 10.0, 10.0)
         assert score == 0
 
 
 # ── generate() 综合输出 ───────────────────────────────────────────────────────
 
-def make_indicators(rsi=50.0, macd_hist=0.0, price=100.0, upper=110.0, lower=90.0,
-                    ma_fast=10.0, ma_slow=10.0):
+def make_indicators(
+    rsi=50.0,
+    macd_hist=0.0,
+    price=100.0,
+    upper=110.0,
+    lower=90.0,
+    ma_fast=10.0,
+    ma_slow=10.0,
+    ma_fast_prev=10.0,
+    ma_slow_prev=10.0,
+):
     return {
         "current_price": price,
         "rsi": rsi,
         "macd": {"macd_line": 0.0, "signal_line": 0.0, "histogram": macd_hist},
         "bollinger": {"upper": upper, "middle": 100.0, "lower": lower},
-        "moving_averages": {"ma_fast": ma_fast, "ma_slow": ma_slow},
+        "moving_averages": {
+            "ma_fast": ma_fast,
+            "ma_slow": ma_slow,
+            "ma_fast_prev": ma_fast_prev,
+            "ma_slow_prev": ma_slow_prev,
+        },
     }
 
 

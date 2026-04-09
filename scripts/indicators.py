@@ -45,6 +45,7 @@ def get_latest_indicators(data):
     ma_fast, ma_slow = calculate_moving_averages(data)
 
     idx = -1
+    prev_idx = -2 if len(data) >= 2 else -1
     rsi_val = rsi.iloc[idx]
     # 连续上涨等场景下 loss→0 会导致 RSI 为 NaN；与全涨语义一致时视为 100，避免 float 转换与下游信号异常
     rsi_out = 100.0 if pd.isna(rsi_val) else float(rsi_val)
@@ -65,5 +66,7 @@ def get_latest_indicators(data):
         "moving_averages": {
             "ma_fast": float(ma_fast.iloc[idx]),
             "ma_slow": float(ma_slow.iloc[idx]),
+            "ma_fast_prev": float(ma_fast.iloc[prev_idx]),
+            "ma_slow_prev": float(ma_slow.iloc[prev_idx]),
         },
     }

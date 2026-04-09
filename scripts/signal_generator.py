@@ -55,12 +55,16 @@ class SignalGenerator:
         return 0, "布林带中性"
 
     @staticmethod
-    def ma_crossover_signal(ma_fast: float, ma_slow: float):
-        if ma_fast > ma_slow:
-            return 1, "快线高于慢线，偏多"
-        if ma_fast < ma_slow:
-            return -1, "快线低于慢线，偏空"
-        return 0, "均线粘合，中性"
+    def ma_crossover_signal(
+        ma_fast: float, ma_slow: float, ma_fast_prev: float, ma_slow_prev: float
+    ):
+        crossed_up = ma_fast_prev <= ma_slow_prev and ma_fast > ma_slow
+        crossed_down = ma_fast_prev >= ma_slow_prev and ma_fast < ma_slow
+        if crossed_up:
+            return 1, "均线金叉确认，偏多"
+        if crossed_down:
+            return -1, "均线死叉确认，偏空"
+        return 0, "均线未发生新交叉，中性"
 
     @staticmethod
     def _risk_notes(total_score: float):
@@ -96,7 +100,12 @@ class SignalGenerator:
 
         if "ma_crossover" in self.enabled:
             ma = indicators["moving_averages"]
-            score, msg = self.ma_crossover_signal(ma["ma_fast"], ma["ma_slow"])
+            score, msg = self.ma_crossover_signal(
+                ma["ma_fast"],
+                ma["ma_slow"],
+                ma["ma_fast_prev"],
+                ma["ma_slow_prev"],
+            )
             weighted_sum += score * self.config["ma_crossover"]["weight"]
             signals.append({"strategy": "MA_CROSSOVER", "score": score, "message": msg})
 

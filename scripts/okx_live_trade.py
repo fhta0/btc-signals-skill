@@ -111,12 +111,48 @@ class OkxClient:
         self.simulated = simulated
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self._server_time_offset: float = 0.0  # 时间偏移（秒）
+        self._last_sync_time: float = 0.0  # 上次同步时间戳
+        self._sync_interval: float = 300.0  # 每 5 分钟重新同步
+        self._has_synced: bool = False  # 是否已同步过
 
-    @staticmethod
-    def _timestamp() -> str:
-        return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
-            "+00:00", "Z"
-        )
+    def _sync_server_time(self) -> float:
+        """同步 OKX 服务器时间，返回偏移量（秒）。失败时返回 0（使用本地时间）。"""
+        try:
+            req = urllib.request.Request(
+                f"{self.base_url}/api/v5/public/time",
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode())
+                # 校验响应格式
+                if data.get("code") != "0" or not data.get("data"):
+                    logging.warning("OKX 时间接口返回异常: %s", data)
+                    return 0.0
+                ts_field = data["data"][0].get("ts")
+                if not ts_field:
+                    logging.warning("OKX 时间接口缺少 ts 字段: %s", data)
+                    return 0.0
+                server_ts_ms = int(ts_field)
+                local_ts_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+                return (server_ts_ms - local_ts_ms) / 1000
+        except Exception as e:
+            logging.warning("同步 OKX 服务器时间失败，使用本地时间: %s", e)
+            return 0.0
+
+    def _get_server_time(self) -> str:
+        """获取 OKX 服务器时间，避免本地时间偏差导致签名过期。"""
+        now_ts = datetime.now(timezone.utc).timestamp()
+
+        # 首次同步或每 N 分钟重新同步一次
+        if not self._has_synced or (now_ts - self._last_sync_time) >= self._sync_interval:
+            self._server_time_offset = self._sync_server_time()
+            self._last_sync_time = now_ts
+            self._has_synced = True
+
+        # 使用偏移后的本地时间
+        adjusted_ts = now_ts + self._server_time_offset
+        return datetime.fromtimestamp(adjusted_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     def _sign(self, ts: str, method: str, path: str, body: str) -> str:
         prehash = f"{ts}{method}{path}{body}"
@@ -136,7 +172,7 @@ class OkxClient:
         full_path = f"{path}{q}"
         url = f"{self.base_url}{full_path}"
         body = json.dumps(payload) if payload else ""
-        ts = self._timestamp()
+        ts = self._get_server_time()
         sign = self._sign(ts, method.upper(), full_path, body)
         headers = {
             "OK-ACCESS-KEY": self.api_key,
@@ -144,6 +180,7 @@ class OkxClient:
             "OK-ACCESS-TIMESTAMP": ts,
             "OK-ACCESS-PASSPHRASE": self.passphrase,
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
         if self.simulated:
             headers["x-simulated-trading"] = "1"
@@ -154,8 +191,38 @@ class OkxClient:
             headers=headers,
             method=method.upper(),
         )
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            # 时间戳错误时强制重新同步并重试一次
+            if e.code == 401:
+                err_body = e.read().decode("utf-8")
+                try:
+                    err_data = json.loads(err_body)
+                    if err_data.get("code") in ("50102", "50103"):  # Timestamp request expired / Invalid timestamp
+                        logging.warning("OKX 时间戳错误，强制重新同步: %s", err_data)
+                        self._server_time_offset = self._sync_server_time()
+                        self._last_sync_time = datetime.now(timezone.utc).timestamp()
+                        self._has_synced = True
+                        # 重试一次
+                        ts2 = self._get_server_time()
+                        sign2 = self._sign(ts2, method.upper(), full_path, body)
+                        headers["OK-ACCESS-TIMESTAMP"] = ts2
+                        headers["OK-ACCESS-SIGN"] = sign2
+                        req2 = urllib.request.Request(
+                            url=url,
+                            data=body.encode("utf-8") if body else None,
+                            headers=headers,
+                            method=method.upper(),
+                        )
+                        with urllib.request.urlopen(req2, timeout=self.timeout) as resp2:
+                            return json.loads(resp2.read().decode("utf-8"))
+                except json.JSONDecodeError:
+                    pass
+                # 重试失败或非时间戳错误，抛出原始异常
+                raise ValueError(f"OKX HTTP 错误: {e.code} {e.reason}") from e
+            raise ValueError(f"OKX HTTP 错误: {e.code} {e.reason}") from e
 
     def account_balance(self) -> dict:
         return self._request("GET", "/api/v5/account/balance")

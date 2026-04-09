@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import logging
 import os
 import sys
@@ -44,6 +45,12 @@ CSV_HEADERS = [
 TRADES_CSV_PATH = os.path.join("data", "paper_trades.csv")
 
 
+def state_file_path(symbol: str, source: str, market_type: str, strategies: str) -> str:
+    """按 symbol+source+market_type+strategies 分桶，避免跨策略串仓。"""
+    key = f"{symbol}_{source}_{market_type}_{strategies}".replace("-", "_").replace(",", "_")
+    return os.path.join("data", f"paper_state_{key}.json")
+
+
 def setup_logger(log_dir: str) -> logging.Logger:
     os.makedirs(log_dir, exist_ok=True)
     logger = logging.getLogger("paper_trade")
@@ -77,6 +84,57 @@ def ensure_csv(csv_path: str) -> None:
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_HEADERS)
         writer.writeheader()
+
+
+def save_state(
+    state_path: str,
+    portfolio: "PaperPortfolio",
+    meta: dict | None = None,
+) -> None:
+    """保存状态文件，包含元数据用于校验。"""
+    state_dir = os.path.dirname(state_path)
+    if state_dir:
+        os.makedirs(state_dir, exist_ok=True)
+    payload = {
+        "cash": portfolio.cash,
+        "qty": portfolio.qty,
+        "avg_cost": portfolio.avg_cost,
+        "realized_pnl": portfolio.realized_pnl,
+        "commission": portfolio.commission,
+        "trade_seq": portfolio.trade_seq,
+        "peak_price": portfolio.peak_price,
+        "meta": meta or {},
+    }
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+def validate_state_meta(state: dict, expected_meta: dict) -> bool:
+    """校验状态文件的元数据是否与当前启动参数一致。缺失 meta 视为不兼容。"""
+    saved_meta = state.get("meta")
+    # meta 缺失或非 dict，视为旧格式文件，不兼容
+    if not saved_meta or not isinstance(saved_meta, dict):
+        return False
+    # 必须包含所有关键字段
+    required_keys = ("symbol", "source", "market_type", "strategies")
+    for key in required_keys:
+        if key not in saved_meta:
+            return False
+        if saved_meta[key] != expected_meta.get(key):
+            return False
+    return True
+
+
+def load_state(state_path: str) -> dict | None:
+    """加载状态文件，捕获 JSON 解析错误并回退到新账户。"""
+    if not os.path.exists(state_path):
+        return None
+    try:
+        with open(state_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        logging.warning("状态文件损坏 (%s)，将重置为新账户: %s", state_path, e)
+        return None
 
 
 def append_trade_csv(
@@ -135,11 +193,18 @@ class PaperPortfolio:
             return 0.0
         return self.qty * price - self.qty * self.avg_cost
 
-    def buy_all(self, price: float, ts: str, reason: str = "signal_buy") -> dict | None:
+    def buy(
+        self,
+        price: float,
+        ts: str,
+        reason: str = "signal_buy",
+        position_pct: float = 1.0,
+    ) -> dict | None:
         if self.cash <= 0 or self.qty > 0:
             return None
-        fee = self.cash * self.commission
-        invest = self.cash - fee
+        use_cash = self.cash * max(0.0, min(1.0, position_pct))
+        fee = use_cash * self.commission
+        invest = use_cash - fee
         if invest <= 0:
             return None
         bought = invest / price
@@ -157,7 +222,7 @@ class PaperPortfolio:
         self.qty = bought
         self.avg_cost = invest / bought
         self.peak_price = price
-        self.cash = 0.0
+        self.cash = self.cash - use_cash
         self.history.append(rec)
         return rec
 
@@ -191,20 +256,20 @@ class PaperPortfolio:
 
 def run_tick(
     portfolio: PaperPortfolio,
+    generator: SignalGenerator,
     symbol: str,
     period: str,
     interval: str,
     source: str,
     market_type: str,
-    strategies: list[str],
+    position_pct: float = 1.0,
     trailing_stop_pct: float = 0.02,
 ) -> tuple[dict, dict | None]:
     data = fetch_price_data(
         symbol, period, interval, source=source, market_type=market_type
     )
     indicators = get_latest_indicators(data)
-    gen = SignalGenerator(strategies)
-    signal = gen.generate(symbol, indicators)
+    signal = generator.generate(symbol, indicators)
     price = float(signal["current_price"])
     action = signal["action"]
     ts = signal["timestamp"]
@@ -223,7 +288,7 @@ def run_tick(
             return signal, trade
 
     if action == "BUY" and portfolio.qty <= 0 and portfolio.cash > 0:
-        trade = portfolio.buy_all(price, ts, reason="signal_buy")
+        trade = portfolio.buy(price, ts, reason="signal_buy", position_pct=position_pct)
     elif action == "SELL" and portfolio.qty > 0:
         trade = portfolio.sell_all(price, ts, reason="signal_sell")
 
@@ -287,6 +352,12 @@ def main():
     parser.add_argument("--capital", type=float, default=10_000.0, help="初始现金（名义 USDT/USD）")
     parser.add_argument("--commission", type=float, default=0.001, help="手续费率，如 0.001=0.1%%")
     parser.add_argument(
+        "--position-pct",
+        type=float,
+        default=1.0,
+        help="单次买入使用现金比例（0~1，默认 1.0）",
+    )
+    parser.add_argument(
         "--trailing-stop-pct",
         type=float,
         default=0.02,
@@ -312,18 +383,57 @@ def main():
         help="日志目录（按天轮转，保留 7 天）",
     )
     args = parser.parse_args()
+    if not 0 < args.position_pct <= 1:
+        raise SystemExit("--position-pct 必须在 (0, 1] 范围内")
     strategies = parse_strategies(args.strategies)
     logger = setup_logger(args.log_dir)
     ensure_csv(TRADES_CSV_PATH)
+    generator = SignalGenerator(strategies)
+
+    # 按策略分桶的状态文件路径
+    state_path = state_file_path(args.symbol, args.source, args.market_type, args.strategies)
+    expected_meta = {
+        "symbol": args.symbol,
+        "source": args.source,
+        "market_type": args.market_type,
+        "strategies": args.strategies,
+    }
 
     quote = "$"
-    portfolio = PaperPortfolio(
-        cash=float(args.capital), commission=float(args.commission)
-    )
+    state = load_state(state_path)
+    if state:
+        # 校验元数据一致性，不一致则拒绝恢复
+        if not validate_state_meta(state, expected_meta):
+            logger.warning(
+                "状态文件元数据不一致，拒绝恢复: saved=%s expected=%s",
+                state.get("meta"),
+                expected_meta,
+            )
+            print(f"[警告] 状态文件 {state_path} 与当前参数不一致，已重置为新账户")
+            state = None
+        else:
+            portfolio = PaperPortfolio(
+                cash=float(state.get("cash", args.capital)),
+                qty=float(state.get("qty", 0.0)),
+                avg_cost=float(state.get("avg_cost", 0.0)),
+                realized_pnl=float(state.get("realized_pnl", 0.0)),
+                commission=float(state.get("commission", args.commission)),
+                trade_seq=int(state.get("trade_seq", 0)),
+                peak_price=float(state.get("peak_price", 0.0)),
+            )
+            logger.info("已恢复持仓状态: %s", state_path)
+            print(f"已恢复状态: {state_path}")
+    if not state:
+        portfolio = PaperPortfolio(
+            cash=float(args.capital), commission=float(args.commission)
+        )
+        save_state(state_path, portfolio, meta=expected_meta)
+        print(f"新建状态文件: {state_path}")
 
     start_msg = (
         f"模拟盘启动 | 本金 {quote}{args.capital:,.2f} | 手续费 {args.commission*100:.3f}% | "
-        f"数据源 {args.source} | 策略 {args.strategies} | 移动止盈回撤 {args.trailing_stop_pct*100:.2f}%"
+        f"数据源 {args.source} | 策略 {args.strategies} | 仓位 {args.position_pct*100:.1f}% | "
+        f"移动止盈回撤 {args.trailing_stop_pct*100:.2f}%"
     )
     print(start_msg)
     print("说明: BUY 且空仓时用全部现金买入；SELL 且持仓时全部卖出。HOLD 不交易。")
@@ -339,12 +449,13 @@ def main():
         try:
             signal, trade = run_tick(
                 portfolio,
+                generator,
                 args.symbol,
                 args.period,
                 args.interval,
                 args.source,
                 args.market_type,
-                strategies,
+                position_pct=float(args.position_pct),
                 trailing_stop_pct=float(args.trailing_stop_pct),
             )
         except Exception as e:
@@ -356,6 +467,7 @@ def main():
             continue
 
         print_after_tick(portfolio, signal, trade, quote, logger=logger)
+        save_state(state_path, portfolio, meta=expected_meta)
         if trade:
             append_trade_csv(
                 TRADES_CSV_PATH,
