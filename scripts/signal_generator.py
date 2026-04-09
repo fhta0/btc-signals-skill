@@ -136,7 +136,7 @@ def main():
         default="all",
         help="all 或逗号分隔: rsi,macd,bollinger,ma_crossover",
     )
-    parser.add_argument("--source", default="yfinance", choices=["yfinance", "okx"])
+    parser.add_argument("--source", default="okx", choices=["yfinance", "okx"])
     parser.add_argument("--market-type", default="SPOT", choices=["SPOT", "SWAP"])
     args = parser.parse_args()
 

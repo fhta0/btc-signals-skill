@@ -20,7 +20,7 @@ def fetch_price_data(
     symbol: str = "BTC-USD",
     period: str = "30d",
     interval: str = "1h",
-    source: str = "yfinance",
+    source: str = "okx",
     market_type: str = "SPOT",
 ):
     """供 signal_generator / backtest 等脚本调用，返回统一 OHLCV DataFrame。"""
@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--symbol", default="BTC-USD")
     parser.add_argument("--period", default="30d")
     parser.add_argument("--interval", default="1h")
-    parser.add_argument("--source", default="yfinance", choices=["yfinance", "okx"])
+    parser.add_argument("--source", default="okx", choices=["yfinance", "okx"])
     parser.add_argument("--market-type", default="SPOT", choices=["SPOT", "SWAP"])
     parser.add_argument("--save", action="store_true")
     args = parser.parse_args()

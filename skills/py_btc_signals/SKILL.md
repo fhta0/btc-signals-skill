@@ -76,7 +76,7 @@ pytest -q
 
 ## 数据源说明
 
-- 默认 `--source yfinance`；OKX 用 `--source okx`，可选 `--market-type SPOT|SWAP`。
+- 默认 `--source okx`；可选 `--source yfinance`，OKX 下可加 `--market-type SPOT|SWAP`。
 - OKX：已验证 `BTC-USD`/`ETH-USD` 映射为 `*-USDT`，其它 `*-USD` 会报错；原生 `BASE-USDT` 可用；分页与 HTTP 见 `scripts/datasource/okx_source.py`。
 - 指标：RSI（Wilder 平滑）、MACD、布林带、均线；信号输出含 `symbol`、`risk_notes` 等字段。
 

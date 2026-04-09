@@ -95,7 +95,7 @@ def main():
     parser.add_argument("--interval", default="1d")
     parser.add_argument("--strategy", default="ma_crossover", choices=["ma_crossover", "rsi"])
     parser.add_argument("--capital", type=int, default=10000)
-    parser.add_argument("--source", default="yfinance", choices=["yfinance", "okx"])
+    parser.add_argument("--source", default="okx", choices=["yfinance", "okx"])
     parser.add_argument("--market-type", default="SPOT", choices=["SPOT", "SWAP"])
     args = parser.parse_args()
 

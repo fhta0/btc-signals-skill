@@ -8,8 +8,8 @@ A Bitcoin quantitative trading analysis toolkit implemented as a Claude Skill (`
 
 **Python 3.10+ required.** Market data is loaded through a **`DataSource` abstraction** (`scripts/datasource/`). Supported backends:
 
-- **`yfinance`** — Yahoo Finance (default)
-- **`okx`** — OKX public REST candles (no API key for market data)
+- **`okx`** — OKX public REST candles (default for market data; no API key)
+- **`yfinance`** — Yahoo Finance (optional)
 
 OKX: symbol mapping and pagination live in `scripts/datasource/okx_source.py` (verified `BTC-USD`/`ETH-USD` → `*-USDT`, `after` in ms, limit 300 per page, browser-like `User-Agent`). Use `pytest -m integration` for live smoke tests.
 
@@ -30,7 +30,7 @@ Dependencies: `yfinance>=0.2.28`, `pandas>=2.0.0`, `numpy>=1.24.0`, `matplotlib>
 ## Common Commands
 
 ```bash
-# Fetch OHLCV (default Yahoo; optional OKX)
+# Fetch OHLCV (default OKX; optional Yahoo)
 python scripts/fetch_price.py --symbol BTC-USD --period 30d --interval 1h --save
 python scripts/fetch_price.py --symbol BTC-USD --period 30d --interval 1h --source okx --market-type SPOT --save
 

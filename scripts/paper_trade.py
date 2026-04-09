@@ -282,7 +282,7 @@ def main():
     parser.add_argument("--period", default="7d")
     parser.add_argument("--interval", default="1h")
     parser.add_argument("--strategies", default="all")
-    parser.add_argument("--source", default="yfinance", choices=["yfinance", "okx"])
+    parser.add_argument("--source", default="okx", choices=["yfinance", "okx"])
     parser.add_argument("--market-type", default="SPOT", choices=["SPOT", "SWAP"])
     parser.add_argument("--capital", type=float, default=10_000.0, help="初始现金（名义 USDT/USD）")
     parser.add_argument("--commission", type=float, default=0.001, help="手续费率，如 0.001=0.1%%")

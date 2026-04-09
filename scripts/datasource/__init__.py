@@ -29,7 +29,7 @@ def fetch_ohlcv(
     symbol: str,
     interval: str,
     period: str,
-    source: str = "yfinance",
+    source: str = "okx",
     **kwargs: Any,
 ) -> pd.DataFrame:
     """统一入口：indicators / signal / backtest 只依赖此函数即可切换数据源。"""
