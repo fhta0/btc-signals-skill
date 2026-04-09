@@ -84,6 +84,10 @@ Implementations:
 
 4. **`backtest.py`** — `BacktestEngine`; commission on position changes; Sharpe uses **`annualization_factor(interval)`** (minute/hour/day aware) and is a **simplified** ratio (mean/std, no risk-free rate subtracted—fine for rough crypto research); result includes **`final_capital`**. CLI: `--source`, `--market-type`.
 
+5. **`paper_trade.py`** — Simulated trading executor. Maintains `PaperPortfolio` with state persistence. Args: `--symbol`, `--capital`, `--commission`, `--position-pct`, `--trailing-stop-pct`. State files are bucketed by `symbol_source_market_type_strategies` (e.g., `data/paper_state_BTC_USD_okx_SPOT_all.json`) with metadata validation on restore.
+
+6. **`okx_live_trade.py`** — OKX live/demo trading executor. Requires `.env` with `OKX_API_KEY`, `OKX_API_SECRET`, `OKX_API_PASSPHRASE`. Uses `--live` for real trading (default is demo). Auto-syncs server time to avoid timestamp errors. Currently SPOT only (no shorting). Logs orders to `data/okx_orders.csv`.
+
 ### Signal output shape
 
 ```
@@ -108,3 +112,4 @@ signals[] (per-strategy scores + messages), risk_notes[]
 - Signals are purely technical — no on-chain data, macro data, or order book
 - Warm-up bars needed before indicators are valid (avoid NaN edge cases)
 - **`yfinance`** depends on Yahoo Finance availability; **OKX** depends on OKX REST and network (403 without a reasonable `User-Agent`)
+- **SPOT mode** in `okx_live_trade.py` and `paper_trade.py` cannot short; sell signals mean "close position" (not open short). SWAP support pending.

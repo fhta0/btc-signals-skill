@@ -68,6 +68,13 @@ python scripts/backtest.py --symbol BTC-USD --period 180d --interval 1d --strate
 python scripts/backtest.py --symbol BTC-USD --period 30d --interval 1h --strategy rsi --source okx
 ```
 
+**模拟盘**
+
+```bash
+python scripts/paper_trade.py --symbol BTC-USD --period 7d --interval 1h --capital 10000
+python scripts/paper_trade.py --symbol BTC-USD --strategies all --once
+```
+
 **测试（可选）**
 
 ```bash

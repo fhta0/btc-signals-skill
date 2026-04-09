@@ -35,13 +35,14 @@ pip install -r requirements.txt
 ## 目录结构
 
 ```text
-py-btc-signals/   # 或你本地的 btc-quant-trader/
+py-btc-signals/
 ├── readme.md
 ├── requirements.txt
 ├── pytest.ini
+├── .env.example          # OKX API 配置模板（可选）
 ├── skills/
 │   └── py_btc_signals/
-│       └── SKILL.md      # OpenClaw / AgentSkills 技能定义
+│       └── SKILL.md
 └── scripts/
     ├── datasource/
     │   ├── __init__.py
@@ -51,7 +52,9 @@ py-btc-signals/   # 或你本地的 btc-quant-trader/
     ├── fetch_price.py
     ├── indicators.py
     ├── signal_generator.py
-    └── backtest.py
+    ├── backtest.py
+    ├── paper_trade.py     # 模拟盘执行器
+    └── okx_live_trade.py  # OKX 实盘/模拟盘执行器（需 API Key）
 ```
 
 ## 依赖（与 `requirements.txt` 一致）
@@ -130,6 +133,48 @@ python scripts/backtest.py --symbol BTC-USD --period 30d --interval 1h --strateg
 - RSI 使用 Wilder 平滑（`ewm(com=period-1, adjust=False)`），便于与主流平台对齐。
 - MACD 信号判断使用 histogram 正负。
 
+## 模拟盘脚本
+
+```bash
+python scripts/paper_trade.py --symbol BTC-USD --period 7d --interval 1h --capital 10000
+python scripts/paper_trade.py --symbol BTC-USD --source okx --strategies all --once
+```
+
+- 模拟全仓买卖，记录盈亏与权益
+- 支持 `--trailing-stop-pct`（移动止盈回撤阈值）
+- 支持 `--position-pct`（单次买入使用现金比例）
+- 状态文件按 `symbol_source_market_type_strategies` 分桶，避免跨策略串仓
+
+### 状态文件
+
+- 路径：`data/paper_state_{symbol}_{source}_{market_type}_{strategies}.json`
+- 包含 `cash`、`qty`、`avg_cost`、`realized_pnl`、`meta` 等字段
+- 启动时校验元数据一致性，不匹配则重置为新账户
+
+## OKX 实盘/模拟盘脚本
+
+```bash
+# 模拟盘（默认）
+python scripts/okx_live_trade.py --symbol BTC-USD --period 7d --interval 1h
+
+# 实盘（需配置 .env）
+python scripts/okx_live_trade.py --live --symbol BTC-USD
+```
+
+- 需在 `.env` 配置 `OKX_API_KEY`、`OKX_API_SECRET`、`OKX_API_PASSPHRASE`
+- 支持 `--trailing-stop-pct`（移动止盈）
+- 订单记录写入 `data/okx_orders.csv`
+- 自动同步 OKX 服务器时间，避免签名过期
+- 当前仅支持现货（SPOT），无法做空
+
+### .env 配置
+
+```bash
+OKX_API_KEY=your_api_key
+OKX_API_SECRET=your_api_secret
+OKX_API_PASSPHRASE=your_passphrase
+```
+
 ## 测试
 
 ```bash
@@ -139,15 +184,6 @@ pytest -q -m integration
 
 默认测试不依赖外网；`-m integration` 会请求 OKX 等（见 `pytest.ini`）。
 
-## GitHub 开源与发现性（SEO）
-
-1. **仓库名**：推荐 `py-btc-signals`；避免过长或与现有大热仓库完全重名。
-2. **About 描述**（英文，便于全球检索，可粘贴到 GitHub 仓库简介）：
-   `Python Bitcoin toolkit: OHLCV from Yahoo Finance & OKX, RSI/MACD/Bollinger/MA signals, multi-strategy scoring, simple backtest. Educational only.`
-3. **Topics 标签**（在仓库页面 Add topics）：  
-   `bitcoin` `python` `quantitative-trading` `backtesting` `yfinance` `okx` `technical-analysis` `trading-signals` `cryptocurrency` `pandas` `numpy`
-4. **README**：首段已含英文关键词；保持标题层级清晰（H1 一个、其余用 H2）。
-5. **LICENSE**：仓库根目录已提供 `LICENSE`（MIT），开源页会显示 license 徽章，利于信任与筛选。
 
 ## 免责声明
 
